@@ -9,7 +9,7 @@ private class ContactCounter_Ext_UT {
     Test.startTest();
 
     ContactCounter_Ext contactCounterExt = new ContactCounter_Ext(new ApexPages.StandardController(acc01));
-    System.assertEquals(0, contactCounterExt.numberofContacts);
+    System.assertEquals(1, contactCounterExt.numberofContacts);
 
     Test.stopTest();
   }
