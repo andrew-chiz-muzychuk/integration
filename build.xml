@@ -19,6 +19,6 @@
   <target name="updatePackage">
     <echo>Start Package update.</echo>
     <sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}"
-               logType="Detail" deployRoot="." singlePackage="true"/>
+               logType="Detail" deployRoot="${user.dir}/src" singlePackage="true"/>
     </target>
 </project>
