@@ -9,7 +9,7 @@ private class ContactCounter_Ext_UT {
     Test.startTest();
 
     ContactCounter_Ext contactCounterExt = new ContactCounter_Ext(new ApexPages.StandardController(acc01));
-    System.assertEquals(1, contactCounterExt.numberofContacts);
+    System.assertEquals(0, contactCounterExt.numberOfContacts);
 
     Test.stopTest();
   }
@@ -28,11 +28,18 @@ private class ContactCounter_Ext_UT {
       ));
     }
     insert accountContacts;
+    acc01 = [SELECT Number_of_Contacts__c FROM Account WHERE Id = :acc01.Id];
+    System.assertEquals(null, acc01.Number_of_Contacts__c);
 
     Test.startTest();
 
     ContactCounter_Ext contactCounterExt = new ContactCounter_Ext(new ApexPages.StandardController(acc01));
-    System.assertEquals(numberOfContacts, contactCounterExt.numberofContacts);
+    System.assertEquals(numberOfContacts, contactCounterExt.numberOfContacts);
+    acc01 = [SELECT Number_of_Contacts__c FROM Account WHERE Id = :acc01.Id];
+    System.assertEquals(null, acc01.Number_of_Contacts__c);
+    contactCounterExt.action();
+    acc01 = [SELECT Number_of_Contacts__c FROM Account WHERE Id = :acc01.Id];
+    System.assertEquals(numberOfContacts, acc01.Number_of_Contacts__c);
 
     Test.stopTest();
   }

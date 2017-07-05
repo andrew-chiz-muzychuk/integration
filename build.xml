@@ -6,15 +6,19 @@
         <property environment="env" />
         <echo>Branch: ${env.CIRCLE_BRANCH}</echo>
         <property file="build.${env.CIRCLE_BRANCH}.properties" />
-        <echo>${build.cmd}</echo>
-        <antcall target="${build.cmd}" />
+      <echo>CheckOnly</echo>
+      <antcall target="CheckOnly"/>
+      <echo>updatePackage</echo>
+      <antcall target="updatePackage"/>
     </target>
-    <target name="DeployAndCheckOnly">
+  <target name="CheckOnly">
         <echo>Deploy Code CheckOnly in Org with username: ${sf.username}</echo>
-        <sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}" deployRoot="${user.dir}/src" logType="Detail" checkOnly="${sf.checkOnly}" />
+    <sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}"
+               deployRoot="${user.dir}/src" logType="Detail" checkOnly="true" testLevel="RunLocalTests"/>
     </target>
-    <target name="DeployAndRunAllTests">
-        <echo>Deploy and RunAllTests in Org with username: ${sf.username}</echo>
-        <sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}" deployRoot="${user.dir}/src" logType="Detail" runallTests="${sf.runallTests}" />
+  <target name="updatePackage">
+    <echo>Start Package update.</echo>
+    <sf:deploy username="${sf.username}" password="${sf.password}" sessionId="${sf.sessionId}"
+               serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}" logType="Detail" deployRoot="." singlePackage="true"/>
     </target>
 </project>

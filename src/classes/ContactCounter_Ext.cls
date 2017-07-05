@@ -1,16 +1,24 @@
 public class ContactCounter_Ext {
 
-  public Integer numberofContacts { get; set; }
+  public Integer numberOfContacts { get; set; }
+  
+  private Account currentAccount;
 
   public ContactCounter_Ext() {
-    numberofContacts = 0;
+    numberOfContacts = 0;
   }
 
   public ContactCounter_Ext(ApexPages.StandardController stdController) {
     this();
     Id accountId = stdController.getId();
     if (accountId != null) {
-      numberofContacts = [SELECT count() FROM Contact WHERE AccountId = :accountId];
+      numberOfContacts = [SELECT count() FROM Contact WHERE AccountId = :accountId];
+      currentAccount = new Account(Id = accountId, Number_of_Contacts__c = numberOfContacts);
     }
+  }
+  
+  public PageReference action() {
+    update currentAccount;
+    return new PageReference('./' + currentAccount.Id);
   }
 }

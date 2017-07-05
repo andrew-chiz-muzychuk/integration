@@ -1,0 +1,2 @@
+<apex:page id="CountContacts" standardController="Account" extensions="ContactCounter_Ext" action="action">
+</apex:page>
