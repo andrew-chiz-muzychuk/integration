@@ -14,11 +14,11 @@
   <target name="CheckOnly">
         <echo>Deploy Code CheckOnly in Org with username: ${sf.username}</echo>
     <sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}"
-               deployRoot="${user.dir}/src" logType="Detail" checkOnly="true" testLevel="RunLocalTests"/>
+               logType="Detail" deployRoot="${user.dir}/src" checkOnly="true" testLevel="RunLocalTests"/>
     </target>
   <target name="updatePackage">
     <echo>Start Package update.</echo>
-    <sf:deploy username="${sf.username}" password="${sf.password}" sessionId="${sf.sessionId}"
-               serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}" logType="Detail" deployRoot="." singlePackage="true"/>
+    <sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}"
+               logType="Detail" deployRoot="." singlePackage="true"/>
     </target>
 </project>
