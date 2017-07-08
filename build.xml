@@ -6,15 +6,15 @@
         <property environment="env" />
         <echo>Branch: ${env.CIRCLE_BRANCH}</echo>
         <property file="build.${env.CIRCLE_BRANCH}.properties" />
-      <echo>CheckOnly</echo>
-      <antcall target="CheckOnly"/>
+      <echo>DeployCode</echo>
+      <antcall target="DeployCode"/>
       <echo>updatePackage</echo>
       <antcall target="updatePackage"/>
     </target>
-  <target name="CheckOnly">
+  <target name="DeployCode">
         <echo>Deploy Code CheckOnly in Org with username: ${sf.username}</echo>
     <sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}"
-               logType="Detail" deployRoot="${user.dir}/src" checkOnly="true" testLevel="RunLocalTests"/>
+               logType="Detail" deployRoot="${user.dir}/src" checkOnly="false" testLevel="RunLocalTests"/>
     </target>
   <target name="updatePackage">
     <echo>Start Package update.</echo>

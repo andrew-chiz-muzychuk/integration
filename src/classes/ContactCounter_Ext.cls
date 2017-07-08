@@ -18,7 +18,11 @@ public class ContactCounter_Ext {
   }
   
   public PageReference action() {
-    update currentAccount;
-    return new PageReference('./' + currentAccount.Id);
+  	if (currentAccount != null) {
+      update currentAccount;
+      return new PageReference('./' + currentAccount.Id);
+  	} else {
+  	  return null;
+  	}
   }
 }
