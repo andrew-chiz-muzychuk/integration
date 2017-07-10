@@ -43,7 +43,7 @@ private class ContactCounter_Ext_UT {
     Test.startTest();
 
     ContactCounter_Ext contactCounterExt = new ContactCounter_Ext(new ApexPages.StandardController(acc01));
-    System.assertEquals(numberOfContacts, contactCounterExt.numberOfContacts);
+    System.assertEquals(numberOfContacts*2, contactCounterExt.numberOfContacts);
     acc01 = [SELECT Number_of_Contacts__c FROM Account WHERE Id = :acc01.Id];
     System.assertEquals(null, acc01.Number_of_Contacts__c);
     contactCounterExt.action();
