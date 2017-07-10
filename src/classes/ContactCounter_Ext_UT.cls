@@ -16,7 +16,7 @@ private class ContactCounter_Ext_UT {
 
   @isTest
   static void xContacts() {
-    Account acc01 = new Account(Name = 'acc01');
+    Account acc01 = new Account(Name = 'Tesla');
     insert acc01;
 
     Integer numberOfContacts = 8;
@@ -24,6 +24,15 @@ private class ContactCounter_Ext_UT {
     for (Integer i=0; i<numberOfContacts; i++) {
       accountContacts.add(new Contact(
         AccountId = acc01.Id,
+        LastName = 'con' + String.valueOf(i)
+      ));
+    }
+    insert accountContacts;
+    accountContacts = new List<Contact>();
+    for (Integer i=0; i<numberOfContacts; i++) {
+      accountContacts.add(new Contact(
+        AccountId = acc01.Id,
+        FirstName = acc01.Name,
         LastName = 'con' + String.valueOf(i)
       ));
     }
@@ -39,7 +48,7 @@ private class ContactCounter_Ext_UT {
     System.assertEquals(null, acc01.Number_of_Contacts__c);
     contactCounterExt.action();
     acc01 = [SELECT Number_of_Contacts__c FROM Account WHERE Id = :acc01.Id];
-    System.assertEquals(numberOfContacts, acc01.Number_of_Contacts__c);
+    System.assertEquals(numberOfContacts*2, acc01.Number_of_Contacts__c);
 
     Test.stopTest();
   }
