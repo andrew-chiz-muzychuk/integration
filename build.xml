@@ -1,20 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns:sf="antlib:com.salesforce" default="sf" basedir=".">
     <target name="Build">
-        <echo>Continuous Integration Build</echo>
-        <taskdef resource="net/sf/antcontrib/antlib.xml" />
-        <property environment="env" />
-        <echo>Branch: ${env.CIRCLE_BRANCH}</echo>
-        <property file="build.${env.CIRCLE_BRANCH}.properties" />
+      <echo>Continuous Integration Build</echo>
+      <taskdef resource="net/sf/antcontrib/antlib.xml" />
+      <property environment="env" />
+      <echo>Branch: ${env.CIRCLE_BRANCH}</echo>
+      <property file="build.${env.CIRCLE_BRANCH}.properties" />
       <echo>ValidateCode</echo>
+      <antcall target="replaceWStagingXml"/>
       <antcall target="ValidateCode"/>
       <echo>DeployCode</echo>
+      <antcall target="replaceWProductionXml"/>
       <antcall target="DeployCode"/>
       <echo>UpdatePackage</echo>
       <antcall target="UpdatePackage"/>
     </target>
   <target name="ValidateCode">
-        <echo>Validate code in Org with username: ${sf.staging-username}</echo>
+    <echo>Validate code in Org with username: ${sf.staging-username}</echo>
     <sf:deploy username="${sf.staging-username}" password="${sf.staging-password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}"
                logType="Detail" deployRoot="${user.dir}/src" checkOnly="true" testLevel="RunLocalTests"/>
   </target>
@@ -28,4 +30,28 @@
     <sf:deploy username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" maxPoll="${sf.maxPoll}"
                logType="Detail" deployRoot="${user.dir}/src" singlePackage="true"/>
   </target>
+    
+  
+  
+  
+  
+  
+  
+  
+  <macrodef name="replaceFile">
+        <attribute name="srcFile"/> 
+        <attribute name="destFile"/> 
+        <sequential>
+          <copy file="@{srcFile}" tofile="@{destFile}" overwrite="true" failonerror="true"/>
+        </sequential>
+  </macrodef>
+    
+  <target name="replaceWStagingXml">
+    <replaceFile srcFile="${user.dir}/src/staging-package.xml" destFile="${user.dir}/src/package.xml"/>           
+  </target>
+  
+  <target name="replaceWProductionXml">
+    <replaceFile srcFile="${user.dir}/src/production-package.xml" destFile="${user.dir}/src/package.xml"/>           
+  </target>
+
 </project>

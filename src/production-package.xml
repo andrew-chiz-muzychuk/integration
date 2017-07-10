@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+    <types>
+        <members>ContactCounter_Ext</members>
+        <members>ContactCounter_Ext_UT</members>
+        <name>ApexClass</name>
+    </types>
+    <types>
+        <members>CountContacts</members>
+        <name>ApexPage</name>
+    </types>
+    <types>
+        <members>Account.Number_of_Contacts__c</members>
+        <name>CustomField</name>
+    </types>
+    <version>40.0</version>
+    <fullName>DevMuza</fullName>
+    <apiAccessLevel>Unrestricted</apiAccessLevel>
+    <description>DevMuza Package to test CircleCI.</description>
+    <namespacePrefix>dev_muza</namespacePrefix>
+</Package>
