@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:sf="antlib:com.salesforce" default="sf" basedir=".">
+<project xmlns:sf="antlib:com.salesforce" default="sf" basedir="." xmlns:ml="org.missinglink.ant.task.http.HttpClientTask">
     <target name="Build">
       <echo>Continuous Integration Build</echo>
       <taskdef resource="net/sf/antcontrib/antlib.xml" />
@@ -14,6 +14,8 @@
       <antcall target="DeployCode"/>
       <echo>UpdatePackage</echo>
       <antcall target="UpdatePackage"/>
+      <echo>UploadPackage</echo>
+      <antcall target="UploadPackage"/>
     </target>
   <target name="ValidateCode">
     <echo>Validate code in Org with username: ${sf.staging-username}</echo>
@@ -53,5 +55,281 @@
   <target name="replaceWProductionXml">
     <replaceFile srcFile="${user.dir}/src/production-package.xml" destFile="${user.dir}/src/package.xml"/>           
   </target>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <taskdef name="http" uri="org.missinglink.ant.task.http.HttpClientTask" classname="org.missinglink.ant.task.http.HttpClientTask" classpath="lib/ml-ant-http-1.1.3.jar"/>
+
+
+  <macrodef name="login" description="Login to salesforce and populate serverUrl / sessionId / instance">
+    <attribute name="username" description="Salesforce user name."/>
+    <attribute name="password" description="Salesforce password."/>
+    <attribute name="serverurl" description="Salesforce endpoint."/>
+    <sequential>
+      <!-- Obtain Session Id via Login SOAP service -->
+      <ml:http url="@{serverurl}/services/Soap/c/39.0" method="POST" failonunexpected="false" outfile="temp/loginResult.xml" statusProperty="loginResponseStatus">
+        <headers>
+          <header name="Content-Type" value="text/xml"/>
+          <header name="SOAPAction" value="login"/>
+        </headers>
+        <entity><![CDATA[
+                    <env:Envelope xmlns:xsd='http://www.w3.org/2001/XMLSchema' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:env='http://schemas.xmlsoap.org/soap/envelope/'>
+                        <env:Body>
+                            <sf:login xmlns:sf='urn:enterprise.soap.sforce.com'>
+                                <sf:username>@{username}</sf:username>
+                                <sf:password>@{password}</sf:password>
+                            </sf:login>
+                        </env:Body>
+                    </env:Envelope>]]>
+        </entity>
+      </ml:http>
+
+      <!-- Fail on error -->
+      <loadfile property="loginResult" srcFile="temp/loginResult.xml" />
+      <fail message="Login failed: ${loginResult}">
+        <condition>
+          <resourcecontains resource="temp/loginResult.xml" substring="faultcode" />
+        </condition>
+      </fail>
+
+      <!-- Parse response into properties -->
+      <xmlproperty file="temp/loginResult.xml" />
+      <echo file="temp/serverUrl.txt" message="${soapenv:Envelope.soapenv:Body.loginResponse.result.serverUrl}" />
+      <echo file="temp/sessionId.txt" message="${soapenv:Envelope.soapenv:Body.loginResponse.result.sessionId}" />
+      <echo file="temp/instance.txt" message="${soapenv:Envelope.soapenv:Body.loginResponse.result.serverUrl}" />
+      <replaceregexp file="temp/instance.txt" match="(https://[^/]+)/.*" replace="\1" />
+      <loadfile property="sessionId" srcFile="temp/sessionId.txt" />
+      <loadfile property="instance" srcFile="temp/instance.txt" />
+    </sequential>
+  </macrodef>
+
+
+
+  <macrodef name="executeAnonymous" description="Invoke ExecuteAnonymous using Salesforce Tooling API">
+    <attribute name="username" description="Salesforce user name."/>
+    <attribute name="password" description="Salesforce password."/>
+    <attribute name="serverurl" description="Salesforce endpoint."/>
+    <text name="apexcode"/>
+    <sequential>
+      <!-- Login to populate serverUrl / sessionId / instance -->
+      <login username="@{username}" password="@{password}" serverurl="@{serverurl}" />
+
+      <!-- Execute using HTTP GET -->
+      <ml:http url="${instance}/services/data/v39.0/tooling/executeAnonymous" method="GET" outfile="lib/executeAnonymousResult.json"  statusProperty="loginResponseStatus">
+        <headers>
+          <header name="Authorization" value="Bearer ${sessionId}"/>
+        </headers>
+        <query>
+          <parameter name="anonymousBody" value="@{apexcode}"/>
+        </query>
+      </ml:http>
+
+      <!-- Fail on error -->
+      <loadfile property="executeAnonymousResult" srcFile="lib/executeAnonymousResult.json" />
+      <fail message="Execute Anonymous failed: ${executeAnonymousResult}">
+        <condition>
+          <resourcecontains resource="lib/executeAnonymousResult.json" substring="&quot;success&quot;:false" />
+        </condition>
+      </fail>
+
+      <!-- Show output -->
+      <echo message="${executeAnonymousResult}" />
+    </sequential>
+  </macrodef>
+
+
+  <target name="test1" description="Deploys all package components to dev org">
+    <taskdef uri="antlib:com.salesforce" classpath="lib/ant-salesforce.jar" />
+    <property environment="env" />
+    <echo>Branch: ${env.CIRCLE_BRANCH}</echo>
+    <property file="build.dev.properties" />
+
+    <echo>${sf.username}</echo>
+    <echo>${sf.serverurl}</echo>
+
+    <executeAnonymous username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}"><![CDATA[
+            for (Account j : [SELECT Name FROM Account]) System.debug(j.Name);
+        ]]></executeAnonymous>
+
+  </target>
+
+
+
+
+  <target name="UploadPackage" description="Upload package">
+    <taskdef uri="antlib:com.salesforce" classpath="lib/ant-salesforce.jar" />
+    <property environment="env" />
+    <echo>Branch: ${env.CIRCLE_BRANCH}</echo>
+    <property file="build.dev.properties" />
+
+
+    <login username="${sf.username}" password="${sf.password}" serverurl="${sf.serverurl}" />
+
+    <echo>${VersionName}</echo>
+    <echo>${instance}</echo>
+    <echo>${sessionId}</echo>
+
+    <PackageUploadRequest
+      VersionName="${VersionName}" MajorVersion="${MajorVersion}" MinorVersion="${MinorVersion}"
+      Description="${Description}" MetadataPackageId="${MetadataPackageId}"
+      InstanceURL="${instance}"
+      SessionId="${sessionId}"
+    />
+    <RetrievePackageUploadResponseResult PackageUploadResponseId="${PackageUploadResponseId}" InstanceURL="${instance}" SessionId="${sessionId}" />
+
+    <echo>Production Installation URL: https://login.salesforce.com/packaging/installPackage.apexp?p0=${MetadataPackageVersionId}</echo>
+    <echo>Sandbox Installation URL: https://test.salesforce.com/packaging/installPackage.apexp?p0=${MetadataPackageVersionId}</echo>
+
+  </target>
+
+
+  <macrodef name="PackageUploadRequest" description="Invoke Create method using Salesforce Tooling API with PackageUploadRequest object">
+    <attribute name="VersionName" description="New Version Name."/>
+    <attribute name="MajorVersion" description="MajorVersion."/>
+    <attribute name="MinorVersion" description="MinorVersion."/>
+    <attribute name="Description" description="Description."/>
+    <attribute name="MetadataPackageId" description="MetadataPackageId."/>
+    <attribute name="InstanceURL" />
+    <attribute name="SessionId" />
+    <sequential>
+
+      <echo>@{ServerURL}</echo>
+      <echo>${ServerURL}</echo>
+
+      <ml:http url="@{InstanceURL}/services/Soap/T/40.0" method="POST" failonunexpected="false" outfile="temp/PackageUploadRequestResult.xml" statusProperty="PackageUploadRequestStatus">
+        <headers>
+          <header name="Content-Type" value="text/xml"/>
+          <header name="SOAPAction" value="\"/>
+        </headers>
+        <entity><![CDATA[
+          <soapenv:Envelope
+            xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+            xmlns:urn="urn:tooling.soap.sforce.com"
+            xmlns:urn1="urn:sobject.tooling.soap.sforce.com"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          >
+            <soapenv:Header>
+              <urn:SessionHeader>
+                <urn:sessionId>@{SessionId}</urn:sessionId>
+              </urn:SessionHeader>
+            </soapenv:Header>
+            <soapenv:Body>
+              <urn:create>
+                <urn:sObjects xsi:type="urn1:PackageUploadRequest">
+			            <urn1:VersionName>@{VersionName}</urn1:VersionName>
+			            <urn1:MajorVersion>@{MajorVersion}</urn1:MajorVersion>
+			            <urn1:MinorVersion>@{MinorVersion}</urn1:MinorVersion>
+			            <urn1:Description>@{Description}</urn1:Description>
+			            <urn1:MetadataPackageId>@{MetadataPackageId}</urn1:MetadataPackageId>
+                </urn:sObjects>
+              </urn:create>
+            </soapenv:Body>
+          </soapenv:Envelope>]]>
+        </entity>
+      </ml:http>
+
+      <!-- Fail on error -->
+      <loadfile property="PackageUploadRequestResult" srcFile="temp/PackageUploadRequestResult.xml" />
+      <fail message="Login failed: ${PackageUploadRequestResult}">
+        <condition>
+          <resourcecontains resource="temp/PackageUploadRequestResult.xml" substring="faultcode" />
+        </condition>
+      </fail>
+
+      <echo file="temp/PackageUploadResponseFaultcode.txt" message="${soapenv:Envelope.soapenv:Body.soapenv:Fault.faultcode}" />
+      <echo file="temp/PackageUploadResponseFaultstring.txt" message="${soapenv:Envelope.soapenv:Body.soapenv:Fault.faultstring}" />
+      <loadfile property="PackageUploadResponseFaultcode" srcFile="temp/PackageUploadResponseFaultcode.txt" />
+      <loadfile property="PackageUploadResponseFaultstring" srcFile="temp/PackageUploadResponseFaultstring.txt" />
+
+      <echo>${PackageUploadResponseFaultcode}</echo>
+      <echo>${PackageUploadResponseFaultstring}</echo>
+
+      <!-- Parse response into properties -->
+      <xmlproperty file="temp/PackageUploadRequestResult.xml" />
+      <echo file="temp/PackageUploadResponseId.txt" message="${soapenv:Envelope.soapenv:Body.createResponse.result.id}" />
+      <echo file="temp/PackageUploadResponseSuccess.txt" message="${soapenv:Envelope.soapenv:Body.createResponse.result.success}" />
+      <loadfile property="PackageUploadResponseId" srcFile="temp/PackageUploadResponseId.txt" />
+      <loadfile property="PackageUploadResponseSuccess" srcFile="temp/PackageUploadResponseSuccess.txt" />
+
+      <echo>PackageUploadResponseId: ${PackageUploadResponseId}</echo>
+
+    </sequential>
+  </macrodef>
+
+  <macrodef name="RetrievePackageUploadResponseResult" description="">
+    <attribute name="PackageUploadResponseId" description="PackageUploadResponseId."/>
+    <attribute name="InstanceURL" />
+    <attribute name="SessionId" />
+    <sequential>
+
+      <ml:http url="@{InstanceURL}/services/Soap/T/40.0" method="POST" failonunexpected="false" outfile="temp/RetrievePackageUploadResponseResult.xml" statusProperty="RetrievePackageUploadResponseResultStatus">
+        <headers>
+          <header name="Content-Type" value="text/xml"/>
+          <header name="SOAPAction" value="\"/>
+        </headers>
+        <entity><![CDATA[
+          <soapenv:Envelope
+            xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+            xmlns:urn="urn:tooling.soap.sforce.com"
+            xmlns:urn1="urn:sobject.tooling.soap.sforce.com"
+            xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          >
+             <soapenv:Header>
+                <urn:SessionHeader>
+                <urn:sessionId>@{SessionId}</urn:sessionId>
+                </urn:SessionHeader>
+             </soapenv:Header>
+             <soapenv:Body>
+                <urn:retrieve>
+                   <urn:select>Status, Description, VersionName, MetadataPackageVersionId</urn:select>
+                   <urn:type>PackageUploadRequest</urn:type>
+                   <urn:ids>@{PackageUploadResponseId}</urn:ids>
+                </urn:retrieve>
+             </soapenv:Body>
+          </soapenv:Envelope>]]>
+        </entity>
+      </ml:http>
+
+      <!-- Fail on error -->
+      <loadfile property="RetrievePackageUploadResponseResult" srcFile="temp/RetrievePackageUploadResponseResult.xml" />
+      <fail message="Login failed: ${RetrievePackageUploadResponseResult}">
+        <condition>
+          <resourcecontains resource="temp/RetrievePackageUploadResponseResult.xml" substring="faultcode" />
+        </condition>
+      </fail>
+
+      <echo file="temp/RetrievePackageUploadResponseResultFaultcode.txt" message="${soapenv:Envelope.soapenv:Body.soapenv:Fault.faultcode}" />
+      <echo file="temp/RetrievePackageUploadResponseResultFaultstring.txt" message="${soapenv:Envelope.soapenv:Body.soapenv:Fault.faultstring}" />
+      <loadfile property="RetrievePackageUploadResponseResultFaultcode" srcFile="temp/RetrievePackageUploadResponseResultFaultcode.txt" />
+      <loadfile property="RetrievePackageUploadResponseResultFaultstring" srcFile="temp/RetrievePackageUploadResponseResultFaultstring.txt" />
+
+      <echo>RetrievePackageUploadResponseResultFaultcode: ${RetrievePackageUploadResponseResultFaultcode}</echo>
+      <echo>RetrievePackageUploadResponseResultFaultstring: ${RetrievePackageUploadResponseResultFaultstring}</echo>
+
+      <!-- Parse response into properties -->
+      <xmlproperty file="temp/RetrievePackageUploadResponseResult.xml" />
+      <echo file="temp/MetadataPackageVersionId.txt" message="${soapenv:Envelope.soapenv:Body.retrieveResponse.result.sf:MetadataPackageVersionId}" />
+      <echo file="temp/MetadataPackageVersionIdStatus.txt" message="${soapenv:Envelope.soapenv:Body.retrieveResponse.result.sf:Status}" />
+      <loadfile property="MetadataPackageVersionId" srcFile="temp/MetadataPackageVersionId.txt" />
+      <loadfile property="MetadataPackageVersionIdStatus" srcFile="temp/MetadataPackageVersionIdStatus.txt" />
+
+    </sequential>
+  </macrodef>
+
 
 </project>
