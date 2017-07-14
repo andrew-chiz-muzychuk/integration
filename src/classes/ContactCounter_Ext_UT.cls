@@ -46,7 +46,7 @@ private class ContactCounter_Ext_UT {
     System.assertEquals(numberOfContacts*2, contactCounterExt.numberOfContacts);
     acc01 = [SELECT Number_of_Contacts__c FROM Account WHERE Id = :acc01.Id];
     System.assertEquals(null, acc01.Number_of_Contacts__c);
-    contactCounterExt.action();
+    contactCounterExt.doAction();
     acc01 = [SELECT Number_of_Contacts__c FROM Account WHERE Id = :acc01.Id];
     System.assertEquals(numberOfContacts*2, acc01.Number_of_Contacts__c);
 
